@@ -12,7 +12,8 @@
 * [x86asm.net: UEFI Programming - First Steps](http://x86asm.net/articles/uefi-programming-first-steps/index.html)
 * [happyassassin.net: How UEFI actually work](https://www.happyassassin.net/2014/01/25/uefi-boot-how-does-that-actually-work-then/)
 * [codeproject.com: How to develop your own Boot Loader](https://www.codeproject.com/Articles/36907/%23_Toc231383181)
-
+* [bsdmag.org: Beyond BIOS, The Extended Firmware Interface (EFI)](https://bsdmag.org/beyond-bios-the-extended-firmware-interface-efi/)
+* [Intel EFI Documentation](http://hackipedia.org/Platform/x86/BIOS/EFI%20Extensible%20Firmware%20Interface/EFI%20How-To%20Guide%20v1.0%20Draft.pdf)
 
 # Games in real mode
 * [BIOS interrupts, graphics, games](http://ics.p.lodz.pl/~dpuchala/CompArch/comparch.html)
