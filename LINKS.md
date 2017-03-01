@@ -1,7 +1,10 @@
 # Bootloader
+// TODO: sort for BIOS/UEFI tutorials`
 * [joebergeron.io: Writing a Tiny x86 Bootloader](http://joebergeron.io/posts/post_two.html)
 * [wiki.osdev.org: OS Reference](http://wiki.osdev.org/Main_Page)
   - [Bootloader](http://wiki.osdev.org/Bootloader)
+  - [UEFI](http://wiki.osdev.org/UEFI)
+  - [UEFI Bare Bones](http://wiki.osdev.org/UEFI_Bare_Bones)
 * [dc0d32 blog: Real mode in C with gcc](http://dc0d32.blogspot.ru/2010/06/real-mode-in-c-with-gcc-writing.html)
 * [reboot.pro: Creating a tiny x86 bootloader](http://reboot.pro/topic/21343-creating-a-tiny-x86-bootloader/)
 * [codeproject.com: Writing a boot loader in Assembly and C](https://www.codeproject.com/Articles/664165/Writi)
@@ -15,7 +18,9 @@
 * [bsdmag.org: Beyond BIOS, The Extended Firmware Interface (EFI)](https://bsdmag.org/beyond-bios-the-extended-firmware-interface-efi/)
 * [Intel EFI Documentation](http://hackipedia.org/Platform/x86/BIOS/EFI%20Extensible%20Firmware%20Interface/EFI%20How-To%20Guide%20v1.0%20Draft.pdf)
 * [EFI Examples on Github](https://github.com/tqh/efi-example/)
+* [Linux EFI boot stub](https://firmware.intel.com/blog/linux-efi-boot-stub)
 
 # Games in real mode
+// TODO: Add more tutorials and examples
 * [BIOS interrupts, graphics, games](http://ics.p.lodz.pl/~dpuchala/CompArch/comparch.html)
 * [Snake in Assembler](https://gcup.ru/forum/28-39335-1)
