@@ -14,6 +14,7 @@
 * [codeproject.com: How to develop your own Boot Loader](https://www.codeproject.com/Articles/36907/%23_Toc231383181)
 * [bsdmag.org: Beyond BIOS, The Extended Firmware Interface (EFI)](https://bsdmag.org/beyond-bios-the-extended-firmware-interface-efi/)
 * [Intel EFI Documentation](http://hackipedia.org/Platform/x86/BIOS/EFI%20Extensible%20Firmware%20Interface/EFI%20How-To%20Guide%20v1.0%20Draft.pdf)
+* [EFI Examples on Github](https://github.com/tqh/efi-example/)
 
 # Games in real mode
 * [BIOS interrupts, graphics, games](http://ics.p.lodz.pl/~dpuchala/CompArch/comparch.html)
