@@ -7,3 +7,4 @@
 * [viralpatel.net: Writing Hello World Bootloader](http://viralpatel.net/taj/tutorial/hello_world_bootloader.php)
 * [rodsbooks.com: Programming for EFI](http://www.rodsbooks.com/efi-programming/why.html)
 * [EDK2 UEFI environment](http://www.tianocore.org/edk2/)
+* [EFILinux Bootloader](https://github.com/mfleming/efilinux)
