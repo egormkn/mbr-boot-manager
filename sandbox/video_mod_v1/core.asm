@@ -1,119 +1,59 @@
 ; Compiling command: nasm core.asm -f bin -o os.bin
 
-[BITS 16]
-[ORG 0x7C00]
+[BITS 16]     ; 16-bit mode
+[ORG 0x7C00]  ; easy
 
 ; Switching mode
 MOV AH, 0
-MOV AL, 0x13
+MOV AL, 0x13    ; VGA mode (320x200x8bit)
 INT 0x10
 
 MOV AX, 0A000h ; Video offset
 MOV ES, AX
 
-; Drawing squares
-MOV BX, 1 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 1
+; Declaring loop label
+endless_drawing:
+mov ah, 0
+int 0x16
+
+mov ax, 0
+call prepare_pixel  ; count new position
+mov dl, 4           ; set color: red
 call draw_pixel
+inc bx              ; x ++
 
-MOV BX, 2 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 1
+mov ax, 0
+call prepare_pixel  ; count new position
+mov dl, 1           ; set color: blue
 call draw_pixel
+inc bx              ; x ++
 
-MOV BX, 1 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 1
+mov ax, 0
+call prepare_pixel  ; count new position
+mov dl, 2           ; set color: green
 call draw_pixel
+inc bx              ; x ++
 
-MOV BX, 2 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 1
-call draw_pixel
+jmp endless_drawing
 
-;;;;;;;;;;;;;;;;;;;
-
-MOV BX, 3 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 2
-call draw_pixel
-
-MOV BX, 3 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 2
-call draw_pixel
-
-MOV BX, 4 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 2
-call draw_pixel
-
-MOV BX, 4 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 2
-call draw_pixel
-
-;;;;;;;;;;;;;;;;;;;
-
-MOV BX, 5 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 3
-call draw_pixel
-
-MOV BX, 5 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 3
-call draw_pixel
-
-MOV BX, 6 ; X
-MOV AX, 1 ; Y
-CALL prepare_screen
-mov dl, 3
-call draw_pixel
-
-MOV BX, 6 ; X
-MOV AX, 2 ; Y
-CALL prepare_screen
-mov dl, 3
-call draw_pixel
-
-;;;;;;;;;;;;;;;;;;;
-
-MOV BX, 2 ; X
-MOV AX, 4 ; Y
-CALL prepare_screen
-mov dl, 4
-call draw_pixel
-
-MOV BX, 6 ; X
-MOV AX, 3 ; Y  <<< WTF if put value of 4
-CALL prepare_screen
-mov dl, 4
-call draw_pixel
-
-prepare_screen:
+; Function
+prepare_pixel:
 	MOV CX, 320
 	MUL CX
 	ADD AX, BX
 	MOV DI, AX
 	ret
 
+; Function 
 draw_pixel:
-	MOV [ES:DI], DL
-	INT 0x10
+	MOV byte [ES:DI], dl
 	RET
 
+; Drawing squares
+MOV BX, 0 ; start X
+MOV AX, 0 ; start Y
+	
+jmp endless_drawing
 JMP $
 
 TIMES 510 - ($ - $$) db 0
