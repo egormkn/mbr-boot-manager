@@ -19,7 +19,7 @@
 * [Intel EFI Documentation](http://hackipedia.org/Platform/x86/BIOS/EFI%20Extensible%20Firmware%20Interface/EFI%20How-To%20Guide%20v1.0%20Draft.pdf)
 * [EFI Examples on Github](https://github.com/tqh/efi-example/)
 * [Linux EFI boot stub](https://firmware.intel.com/blog/linux-efi-boot-stub)
-* [RUSSIAN ANDER VODKA write about asm](http://forum.vingrad.ru/act-Print/client/html/f-152/t-34.html)
+* [Talks about VGA (russian)](http://forum.vingrad.ru/act-Print/client/html/f-152/t-34.html)
 
 # Games in real mode
 // TODO: Add more tutorials and examples
