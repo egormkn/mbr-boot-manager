@@ -20,6 +20,7 @@
 * [EFI Examples on Github](https://github.com/tqh/efi-example/)
 * [Linux EFI boot stub](https://firmware.intel.com/blog/linux-efi-boot-stub)
 * [Talks about VGA (russian)](http://forum.vingrad.ru/act-Print/client/html/f-152/t-34.html)
+* [NASM Bootloader + Protected Mode](http://glob.inamidst.com/bootloader)
 
 # Games in real mode
 // TODO: Add more tutorials and examples
