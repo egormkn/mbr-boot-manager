@@ -26,3 +26,6 @@
 // TODO: Add more tutorials and examples
 * [BIOS interrupts, graphics, games](http://ics.p.lodz.pl/~dpuchala/CompArch/comparch.html)
 * [Snake in Assembler](https://gcup.ru/forum/28-39335-1)
+
+# Shemplo's notes
+* [How to link functions between C and ASM](http://walletpad.tk/materials/asm/)
