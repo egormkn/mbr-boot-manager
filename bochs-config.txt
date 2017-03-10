@@ -1,0 +1,15 @@
+# ROM and VGA BIOS images --------------------------------------------
+
+romimage:    file=$BXSHARE/BIOS-bochs-latest, address=0xfffe0000
+vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
+
+# boot from floppy using our disk image ------------------------------
+
+floppya: 1_44=boot.bin, status=inserted            # Boot from drive A
+boot: a
+
+# logging and reporting ----------------------------------------------
+
+log:         boot.log
+error:       action=report
+info:        action=report
