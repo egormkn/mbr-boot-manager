@@ -9,6 +9,7 @@ The format of array: [name]: [directive] \( [value] \)*
 
 For example: `array: db 1, 2, 3, 4, 5` will create `array = [1, 2, 3, 4, 5]` with 1-byte pointer size
 
+###Navigating in array
 __The important note__: to navigate in array use only __\*b\*__ registers!
 
 For example: to get the third value from `array` we need to write this:
