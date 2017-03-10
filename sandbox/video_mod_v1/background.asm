@@ -52,8 +52,8 @@ fill_background:
 		mov [es:edi], dx  ; Draw pixel with DX color
 		inc ecx            ; Go to next pixel
 		
-		cmp ecx, 320 * 200 ; Check if all pixel drawn
-		jl .inside_loop     ; If not then continue
+		cmp ecx, SCREEN_WIDTH * SCREEN_HEIGHT ; Check if all pixel drawn
+		jl .inside_loop                        ; If not then continue
 		
 	jmp key_listener ; Return to listener for a keys
 
