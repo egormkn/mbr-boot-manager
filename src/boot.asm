@@ -1,50 +1,63 @@
-;**********************************************************;
-;*                    x86 Bootloader                      *;
-;*                                                        *;
-;*             github.com/egormkn/bootloader              *;
-;**********************************************************;
+;********************************************************************;
+;*                         x86 Bootloader                           *;
+;*                                                                  *;
+;*                  github.com/egormkn/bootloader                   *;
+;********************************************************************;
 
-; Compiling command: nasm boot.asm -f bin -o boot.bin
+%define FAT12         ; <-- Set filesystem here: FAT12, FAT16 or FAT32
 
-[BITS 16]         ; NASM directive that enables 16-bit mode
+;********************************************************************;
+;*                              Header                              *;
+;********************************************************************;
 
-[ORG 0x7C00]      ; NASM directive that specifies the memory
-                  ; address at which program will be loaded
+[BITS 16]                   ; NASM directive that enables 16-bit mode
 
-start: JMP loader ; Jump over OEM Parameter block
+[ORG 0x7C00]                ; NASM directive that specifies the memory
+                            ;  address at which program will be loaded
 
+boot: JMP loader                          ; Jump over BPB to boot code
+TIMES (3 + boot - $) DB 0x90              ; Set BPB offset to 3 bytes
 
-;**********************************************************;
-;*                  OEM Parameter block                   *;
-;**********************************************************;
+OEM:                 DB "x86 Boot"           ; OEM name (8 characters)
 
-bpbOEM:                DB "My OS   "               ; 8 bytes
-bpbBytesPerSector:     DW 512         ; Must be a power of 2
-bpbSectorsPerCluster:  DB 1           
-bpbReservedSectors:    DW 1        ; Boot sector is reserved
-bpbNumberOfFATs:       DB 2
-bpbRootEntries:        DW 224
-bpbTotalSectors:       DW 2880
-bpbMedia:              DB 0xF0
-bpbSectorsPerFAT:      DW 9
-bpbSectorsPerTrack:    DW 18
-bpbHeadsPerCylinder:   DW 2
-bpbHiddenSectors:      DD 0
-bpbTotalSectorsBig:    DD 0
-bsDriveNumber:         DB 0
-bsUnused:              DB 0
-bsExtBootSignature:    DB 0x29
-bsSerialNumber:        DD 0xa0a1a2a3
-bsVolumeLabel:         DB "BOOTLOADER "           ; 11 bytes
-bsFileSystem:          DB "FAT12   "              ;  8 bytes
+;********************************************************************;
+;*                       BIOS Parameter block                       *;
+;********************************************************************;
 
+%ifdef FAT12
+%include "fat12_bpb.asm"                  ; FAT12 BIOS Parameter block
+%elifdef FAT16                            ; or
+%include "fat16_bpb.asm"                  ; FAT16 BIOS Parameter block
+%elifdef FAT32                            ; or
+%include "fat32_bpb.asm"                  ; FAT32 BIOS Parameter block
+%else
+%error Unsupported file system
+%endif
 
-;**********************************************************;
-;*                 Bootloader entry point                 *;
-;**********************************************************;
+;********************************************************************;
+;*                      Bootloader entry point                      *;
+;********************************************************************;
 
 loader:
-%include "bootcode.asm"    ; Load bootcode from separate file
+%include "bootcode.asm"              ; Load bootcode from another file
 
-TIMES 510 - ($ - $$) db 0  ; Fill other bytes with 0 ($ - current line, $$ - first line)
-DW 0xAA55                  ; Boot sector signature (marks disk as bootable)
+;********************************************************************;
+;*                         File system tools                        *;
+;********************************************************************;
+
+%ifdef FAT12
+%include "fat12.asm"                         ; FAT12 file system tools
+%elifdef FAT16                               ; or
+%include "fat16.asm"                         ; FAT16 file system tools
+%elifdef FAT32                               ; or
+%include "fat32.asm"                         ; FAT32 file system tools
+%else
+%error Unsupported file system
+%endif
+
+;********************************************************************;
+;*                              Footer                              *;
+;********************************************************************;
+
+TIMES 510 - ($ - $$) DB 0                    ; Fill other bytes with 0
+DW 0xAA55                                    ; Mark sector as bootable

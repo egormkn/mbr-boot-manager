@@ -21,6 +21,9 @@
 * [Linux EFI boot stub](https://firmware.intel.com/blog/linux-efi-boot-stub)
 * [Talks about VGA (russian)](http://forum.vingrad.ru/act-Print/client/html/f-152/t-34.html)
 * [NASM Bootloader + Protected Mode](http://glob.inamidst.com/bootloader)
+* [Microsoft FAT32 Specs](http://read.pudn.com/downloads77/ebook/294884/FAT32%20Spec%20(SDA%20Contribution).pdf)
+* [Great OS development tutorial](http://www.brokenthorn.com/Resources/OSDevIndex.html)
+
 
 # Games in real mode
 // TODO: Add more tutorials and examples
