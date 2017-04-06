@@ -23,7 +23,8 @@
 * [NASM Bootloader + Protected Mode](http://glob.inamidst.com/bootloader)
 * [Microsoft FAT32 Specs](http://read.pudn.com/downloads77/ebook/294884/FAT32%20Spec%20(SDA%20Contribution).pdf)
 * [Great OS development tutorial](http://www.brokenthorn.com/Resources/OSDevIndex.html)
-
+* [University course on bootloaders](http://www.cs.cmu.edu/~410-s07/p4/p4-boot.pdf)
+* [All about MBR](http://thestarman.narod.ru/asm/mbr/index.html)
 
 # Games in real mode
 // TODO: Add more tutorials and examples
