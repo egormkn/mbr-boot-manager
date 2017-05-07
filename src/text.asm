@@ -26,6 +26,7 @@ print_input_char:
 	cmp al, 0x48        ; Left arrow (75d)
 	je .move_left
 	
+      MOV AL, 0x75
 	mov ah, 0x0E
 	int 0x10
 	
