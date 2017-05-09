@@ -1,105 +1,117 @@
-bits 16
-org 0x7C00
+bits 16     ; Usual 16 bit mode
+org 0x7C00  ; Usual ram-mem offset
 
 ;; init
-mov ax, 0x0501
-int 0x10
+mov ax, 0x0501  ; Переходим на 1 страницу консоли
+int 0x10        ; Вызываем переход с ключём 5h
 
 ;; body
-xor cx, cx
+xor cx, cx  ; На всякий случай
 
-main_loop:
-	call draw_screen
-	call key_listener
-	call move_select
+main_loop:              ; Основная логика программы:
+	call draw_screen    ; * Нарисовать
+	call key_listener   ; * Подождать тыка на кнопку
+	call move_select    ; * Что-нибудь сделать (отреагировать на нажатие)
 	
-	jmp main_loop
+	jmp main_loop       ; Вечно повторить
+	
+;;;;;;;;;;;;;
 
-;; final
-mov dx, 0x0801
-mov bh, 0x01
-mov ah, 0x02
-int 0x10
+key_listener:    ; Главный по кнопочкам
+	xor ax, ax  ; Очищаем буфер
+	int 0x16     ; Принимаем сигнал от Клавы
+	
+	ret          ; Говорим, что кнопку тыкнули
+	
+move_select:              ; Реагируем на нажатие
+	cmp ax, 0x4800 ; up     Проверяем, что это стрелка вверх
+	je move_select_up     ; Двигаем уголок вверх
 
-ret
+	cmp ax, 0x5000 ; down   Проверяем, что это стрелка вниз
+	je move_select_down   ; Двигаем уголок вниз
+	
+	ret  ; Непредвиденные обстоятельства (другая кнопка)
+	      ; Просто игнорим это событие
 
-key_listener:
-	xor ax, ax
-	int 0x16
+move_select_up:      ; Аккуратно двигаем уголок вверх
+	cmp cx, 0       ; Проверяем не на верху ли он
+	jle just_return  ; Уголок наверху, можно забить
 	
-	ret
+	dec cx          ; Уменьшаем индекс
+	ret             ; Завершаем обработку
 	
-move_select:
-	cmp ax, 0x4800 ; up
-	je move_select_up
+move_select_down:    ; Аккуратно двигаем уголок вниз
+	cmp cx, 3       ; Проверяем не внизу ли он
+	jae just_return  ; Уголок внизу, можно забить
+	
+	inc cx          ; Увеличиваем индекс
+	ret             ; Завершаем обработку
+	 
+just_return:        ; Завершаем обработку
+	ret             ; Завершаем обработку
 
-	cmp ax, 0x5000 ; down
-	je move_select_down
-	
-	ret
+draw_partition:       ; Рисуем модельку раздела
+	mov bh, 0x01      ; Указываем страницу
+	mov ah, 0x02      ; Говорим, что будем двигать каретку
+	int 0x10          ; Двигаем каретку
 
-move_select_up:
-	cmp cx, 0
-	jle just_return
+	mov edx, part_template  ; Загружаем строчку
+	call print_string       ; Печатаем строчку
 	
-	dec cx
-	ret
+	ret                     ; Завершаем печать
 	
-move_select_down:
-	cmp cx, 1
-	jae just_return
-	
-	inc cx
-	ret
-	
-just_return:
-	ret
+draw_screen:               ; Рисуем полностью экран
+	push cx               ; Сохраняем позицию уголка
 
-draw_screen:
-	mov ax, 0x0600
-	mov bh, 0x07
-	int 0x10
-
-	mov dx, 0x0101
-	mov bh, 0x01
-	mov ah, 0x02
-	int 0x10
-
-	mov edx, title_string
-	call print_string
+	; Чистим экран
+	mov ax, 0x0600   ; 06 - прокрутка, 00 - прокрутка за счёт чистки
+	mov bh, 0x07     ; 07 - приятный серый цвет
+	mov cx, 0x0000   ; От точки (00h, 00h) до точки (10h, 10h)
+	mov dx, 0x1010
+	int 0x10         ; Чистим
 	
-	mov dx, 0x0305
-	mov bh, 0x01
-	mov ah, 0x02
-	int 0x10
+	xor cx, cx  ; Готовим для рисования моделек
 	
-	mov edx, part_first_name
-	call print_string
+	.draw_loop:
+		cmp cx, 4        ; Проверяем, что мы нарисовали меньше 4 моделек
+		jae .draw_finish  ; Ну иначе продолжаем делать дела
+		
+		mov dx, 0x0004   ; Фиксируем отступ каретки 0 по вертикали и 4 по горизонтали
+		mov al, cl       ; Получаем индекс строки
+		mov bl, 2        ; Умножаем его на 2
+		mul bl
+		
+		add al, 1        ; Смещаем на 1 строку (чтобы сверху было пусто и красиво)
+		add dh, al       ; Меняем вертикальный отступ на посчитанный
+		
+		call draw_partition ; Рисуем модель раздела
+		
+		mov al, 0x31      ; Это 1
+		add al, cl        ; Получаем истинный номер
+		call print_char   ; Дописываем номер раздела
+		
+		inc cx            ; Переходим к следующему
+		jmp .draw_loop
 	
-	mov dx, 0x0505
-	mov bh, 0x01
-	mov ah, 0x02
-	int 0x10
+	.draw_finish:       ; Завершаем рисовашки
+		pop cx          ; Считываем позицию каретки
 	
-	mov edx, part_second_name
-	call print_string
-	
-	mov dx, 0x0002
-	mov al, cl
-	mov bl, 2
-	mul bl
-	
-	add al, 3
-	add dh, al
-	
-	mov bh, 0x01
-	mov ah, 0x02
-	int 0x10
-	
-	mov al, ">"
-	call print_char
-	
-	ret
+		mov dx, 0x0001  ; Фиксируем отступ каретки 0 по вертикали и 1 по горизонтали
+		mov al, cl      ; Получаем индекс строки
+		mov bl, 2       ; Умножаем его на 2
+		mul bl
+		
+		add al, 1       ; Смещаем на 1 строку
+		add dh, al      ; Меняем вертикальный отступ на посчитанный
+		
+		mov bh, 0x01    ; Указываем страницу
+		mov ah, 0x02    ; Говорим, что будем двигать каретку
+		int 0x10        ; Двигаем каретки
+		
+		mov al, ">"     ; Печатаем уголок
+		call print_char
+		
+		ret	  ; Завершаем рисовашки
 
 print_char:
 	mov ah, 0x0E
@@ -120,9 +132,7 @@ print_string:
 print_stop:
 	ret
 	
-title_string db "Select section to boot:", 0
-part_first_name db "Partition 0", 0
-part_second_name db "Partition 1", 0
+part_template db "Partition ", 0 ; Для модели раздела
 
 times 510 - ($ - $$) db 0
 dw 0xAA55
