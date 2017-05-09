@@ -4,11 +4,13 @@
 ;*                   github.com/egormkn/bootloader                  *;
 ;********************************************************************;
 
+; MUST READ: http://stackoverflow.com/questions/11174399/pc-boot-dl-register-and-drive-number
+
+%define SIZE 512             ; MBR sector size (512 bytes)
 %define BASE 0x7C00          ; Address at which BIOS will load MBR
 %define DEST 0x0600          ; Address at which MBR should be copied
-%define SIZE 512             ; MBR sector size (512 bytes)
-%define ENTRY_SIZE 16        ; Partition table entry size
 %define ENTRY_NUM 4          ; Number of partition entries
+%define ENTRY_SIZE 16        ; Partition table entry size
 %define DISK_ID 0x12345678   ; NT Drive Serial Number (4 bytes)
 
 ;********************************************************************;
@@ -22,6 +24,7 @@
 ;*                         Prepare registers                        *;
 ;********************************************************************;
 
+CLI
 MOV SP, BASE                 ; Set Stack Pointer to BASE
 XOR AX, AX                   ; Zero out the Accumulator register
 MOV SS, AX                   ; Zero out Stack Segment register
@@ -44,13 +47,33 @@ SKIP: EQU ($ - $$)           ; Go here in copied code
 ;*                        Set BIOS video mode                       *;
 ;********************************************************************;
 
-; TODO
+STI                          ; Enable interrupts
+
+MOV AX, 0x0003               ; Set video mode to 0x03 (80x25, 4-bit)
+INT 0x10                     ; Change video mode (function 0x00)
+
+MOV AX, 0x0501               ; Set active display page to 0x01 (clear)
+INT 0x10                     ; Switch display page (function 0x05)
+
+MOV AX, 0x0600               ; Scroll window (0x00 lines => clear)
+MOV BH, 0x87                 ; Color: red/cyan
+MOV CX, 0x0000               ; Upper-left point (row: 0, column: 0)
+MOV DX, 0x184F               ; Lower-right point (row: 24, column: 79)
+INT 0x10                     ; Scroll up window (function 0x06)
+
+MOV AX, 0x0103               ; Set cursor shape for video mode 0x03
+MOV CX, 0x0105               ; Display lines 1-5 (max: 0-7)
+INT 0x10                     ; Change cursor shape (function 0x01)
+
+MOV AH, 0x02                 ; Set cursor position
+MOV BH, 0x01                 ; Set page number to 0x01
+MOV DX, 0x0505               ; Set row and column (starting from 0)
+INT 0x10                     ; Move cursor
 
 ;********************************************************************;
 ;*                       Print Partition table                      *;
 ;********************************************************************;
 
-STI                          ; Enable interrupts
 MOV CX, ENTRY_NUM            ; Maximum of four entries as loop counter
 MOV BP, 446 + DEST           ; Location of first entry in the table
 
@@ -60,8 +83,67 @@ ADD BP, ENTRY_SIZE           ; Switch to the next partition entry
 LOOP FOR_PARTITIONS          ; Check next entry unless CX = 0
 
 ; MENU HERE
-MOV BP, 446 + DEST           ; DELETE THIS LATER
-JMP BOOT
+;MOV BP, 446 + DEST           ; DELETE THIS LATER
+;JMP BOOT
+
+; ax, bx, sp, di
+
+
+
+
+
+
+mov cx, 0x0001  ; На всякий случай
+
+main_loop:              ; Основная логика программы:
+    call draw_screen    ; * Нарисовать
+    xor ax, ax  ; Очищаем буфер
+    int 0x16     ; Принимаем сигнал от Клавы
+    
+    cmp ax, 0x4800 ; up     Проверяем, что это стрелка вверх
+    je move_select_up     ; Двигаем уголок вверх
+
+    cmp ax, 0x5000 ; down   Проверяем, что это стрелка вниз
+    je move_select_down   ; Двигаем уголок вниз
+    
+    jmp main_loop       ; Вечно повторить
+    
+;;;;;;;;;;;;;
+
+move_select_up:      ; Аккуратно двигаем уголок вверх
+    cmp cx, 1       ; Проверяем не на верху ли он
+    jle move_select_up_ret  ; Уголок наверху, можно забить
+    
+    dec cx          ; Уменьшаем индекс
+    move_select_up_ret:
+    jmp main_loop             ; Завершаем обработку
+    
+move_select_down:    ; Аккуратно двигаем уголок вниз
+    cmp cx, 4       ; Проверяем не внизу ли он
+    jae move_select_down_ret  ; Уголок внизу, можно забить
+    
+    inc cx          ; Увеличиваем индекс
+    move_select_down_ret:
+    jmp main_loop             ; Завершаем обработку
+    
+    
+draw_screen:               ; Рисуем полностью экран
+        mov dl, 0x01  ; Фиксируем отступ каретки 0 по вертикали и 1 по горизонтали
+        mov dh, cl      ; Меняем вертикальный отступ на посчитанный
+        
+        mov bh, 0x01    ; Указываем страницу
+        mov ah, 0x02    ; Говорим, что будем двигать каретку
+        int 0x10        ; Двигаем каретки
+        
+        ret      ; Завершаем рисовашки
+
+
+
+
+
+
+
+
 ; MENU HERE
 
 INT 0x18                     ; Start ROM-BASIC or display an error
@@ -73,20 +155,37 @@ JMP HALT
 ;********************************************************************;
 
 PRINT_PARTITION:            ; CX = 4..1, BP = pointer
-    CMP BYTE [BP], 0
-    JZ NON_ACTIVE
-    MOV SI, ACTIVE_STR - BASE + DEST
-    CALL PRINT_STRING
-    JMP CONTINUE_PRINT
-    NON_ACTIVE:
-    MOV SI, NON_ACTIVE_STR - BASE + DEST
-    CALL PRINT_STRING
-    CONTINUE_PRINT:
-    MOV SI, NO_PARTITION_STR - BASE + DEST
-    CALL PRINT_STRING
-    MOV SI, LINE_BREAK - BASE + DEST
-    CALL PRINT_STRING
+    MOV DL, 0x04   ; Фиксируем отступ каретки 0 по вертикали и 4 по горизонтали
+                   ; DH = Row, DL = Column
+    MOV DH, CL
+    MOV BH, 0x01      ; BH = Page number
+    MOV AH, 0x02      ; Set cursor position
+    INT 0x10          ; Двигаем каретку
+
+    MOV SI, NO_PARTITION_STR  ; Загружаем строчку
+    CALL PRINT_STRING       ; Печатаем строчку
+    
+    MOV al, 0x30      ; Это 1
+    ADD al, dh        ; Получаем истинный номер
+    CALL PRINT_CHAR   ; Дописываем номер раздела
     RET
+    
+    
+;PRINT_PARTITION:            ; CX = 4..1, BP = pointer
+;    CMP BYTE [BP], 0
+;    JZ NON_ACTIVE
+;    MOV SI, ACTIVE_STR - BASE + DEST
+;    CALL PRINT_STRING
+;    JMP CONTINUE_PRINT
+;    NON_ACTIVE:
+;    MOV SI, NON_ACTIVE_STR - BASE + DEST
+;    CALL PRINT_STRING
+;    CONTINUE_PRINT:
+;    MOV SI, NO_PARTITION_STR - BASE + DEST
+;    CALL PRINT_STRING
+;    MOV SI, LINE_BREAK - BASE + DEST
+;    CALL PRINT_STRING
+;    RET
 
 BOOT_1:
     MOV SI, BOOT_FROM_1 - BASE + DEST
@@ -264,7 +363,7 @@ PRINT_CHAR:
 ;*                             Strings                              *;
 ;********************************************************************;
 
-NO_PARTITION_STR: DB "PART", 0
+NO_PARTITION_STR: DB "Partition ", 0
 ACTIVE_STR: DB "A ", 0
 NON_ACTIVE_STR: DB "NA ", 0
 BOOT_FROM_1: DB "ERR1", 0

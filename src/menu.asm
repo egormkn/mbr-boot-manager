@@ -1,20 +1,65 @@
 bits 16     ; Usual 16 bit mode
 org 0x7C00  ; Usual ram-mem offset
 
-MOV AL, 0x03                 ; Set video mode to 0x03 (80x25, 4-bit)
-INT 0x10                     ; Change video mode
+STI                          ; Enable interrupts
+
+MOV AX, 0x0003               ; Set video mode to 0x03 (80x25, 4-bit)
+INT 0x10                     ; Change video mode (function 0x00)
 
 MOV AX, 0x0501               ; Set active display page to 0x01 (clear)
 INT 0x10                     ; Switch display page (function 0x05)
 
-MOV AX, 0x0103               ; Set cursor shape
-MOV CX, 0x0105
-INT 0x10
+MOV AX, 0x0600               ; Scroll window (0x00 lines => clear)
+MOV BH, 0x43                 ; Color: red/cyan
+MOV CX, 0x0000               ; Upper-left point (row: 0, column: 0)
+MOV DX, 0x184F               ; Lower-right point (row: 24, column: 79)
+INT 0x10                     ; Scroll up window (function 0x06)
+
+MOV AX, 0x0103               ; Set cursor shape for video mode 0x03
+MOV CX, 0x0105               ; Display lines 1-5 (max: 0-7)
+INT 0x10                     ; Change cursor shape (function 0x01)
+
+MOV AH, 0x02                 ; Set cursor position
+MOV BH, 0x01                 ; Set page number to 0x01
+MOV DX, 0x0505               ; Set row and column (starting from 0)
+INT 0x10                     ; Move cursor
+
 
 jmp next
 db 0xFA, 0xFA
 next:
 
+
+
+
+xor dh, dh  ; Готовим для рисования моделек
+    
+draw_loop:
+    cmp dh, 4        ; Проверяем, что мы нарисовали меньше 4 моделек
+    jae draw_finish ; Ну иначе продолжаем делать дела
+    
+    mov dl, 0x04   ; Фиксируем отступ каретки 0 по вертикали и 4 по горизонтали
+                   ; DH = Row, DL = Column
+    
+    mov bh, 0x01      ; BH = Page number
+    mov ah, 0x02      ; Set cursor position
+    int 0x10          ; Двигаем каретку
+
+    mov SI, part_template  ; Загружаем строчку
+    call PRINT_STRING       ; Печатаем строчку
+    
+    mov al, 0x31      ; Это 1
+    add al, dh        ; Получаем истинный номер
+    call PRINT_CHAR   ; Дописываем номер раздела
+    
+    inc dh            ; Переходим к следующему
+    jmp draw_loop
+
+
+
+
+
+draw_finish:
 
 ;; body
 xor cx, cx  ; На всякий случай
@@ -52,45 +97,8 @@ move_select_down:    ; Аккуратно двигаем уголок вниз
     
     
 draw_screen:               ; Рисуем полностью экран
-    push cx               ; Сохраняем позицию уголка
-
-    ; Чистим экран
-    mov ax, 0x0600   ; 06 - прокрутка, 00 - прокрутка за счёт чистки
-    mov bh, 0x07     ; 07 - приятный серый цвет
-    mov cx, 0x0000   ; От точки (00h, 00h) до точки (10h, 10h)
-    mov dx, 0x1010
-    int 0x10         ; Чистим
-    
-    xor cx, cx  ; Готовим для рисования моделек
-    
-    .draw_loop:
-        cmp cx, 4        ; Проверяем, что мы нарисовали меньше 4 моделек
-        jae .draw_finish ; Ну иначе продолжаем делать дела
-        
-        mov dx, 0x0004   ; Фиксируем отступ каретки 0 по вертикали и 4 по горизонтали
-        mov al, cl       ; Получаем индекс строки
-        add dh, al       ; Меняем вертикальный отступ на посчитанный
-        
-        mov bh, 0x01      ; Указываем страницу
-        mov ah, 0x02      ; Говорим, что будем двигать каретку
-        int 0x10          ; Двигаем каретку
-    
-        mov SI, part_template  ; Загружаем строчку
-        call PRINT_STRING       ; Печатаем строчку
-        
-        mov al, 0x31      ; Это 1
-        add al, cl        ; Получаем истинный номер
-        call PRINT_CHAR   ; Дописываем номер раздела
-        
-        inc cx            ; Переходим к следующему
-        jmp .draw_loop
-    
-    .draw_finish:       ; Завершаем рисовашки
-        pop cx          ; Считываем позицию каретки
-    
-        mov dx, 0x0001  ; Фиксируем отступ каретки 0 по вертикали и 1 по горизонтали
-        mov al, cl      ; Получаем индекс строки
-        add dh, al      ; Меняем вертикальный отступ на посчитанный
+        mov dl, 0x01  ; Фиксируем отступ каретки 0 по вертикали и 1 по горизонтали
+        mov dh, cl      ; Меняем вертикальный отступ на посчитанный
         
         mov bh, 0x01    ; Указываем страницу
         mov ah, 0x02    ; Говорим, что будем двигать каретку
