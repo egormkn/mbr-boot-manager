@@ -1,9 +1,14 @@
 # Bootloader
 
+### x86
+* [ousob.com: Interrupts](http://www.ousob.com/ng/asm/ng1f806.php)
+* [biosprog.narod.ru: Interrupts](http://biosprog.narod.ru/real/ints/int.htm)
+
 * [wiki.osdev.org: OS Reference](http://wiki.osdev.org/Main_Page)
   - [Bootloader](http://wiki.osdev.org/Bootloader)
   - [UEFI](http://wiki.osdev.org/UEFI)
   - [UEFI Bare Bones](http://wiki.osdev.org/UEFI_Bare_Bones)
+* [fleder44.net: OS notes](http://fleder44.net/312/notes/)
 
 ### MBR (Master Boot Record, used with BIOS)
 * [joebergeron.io: Writing a Tiny x86 Bootloader](http://joebergeron.io/posts/post_two.html)
