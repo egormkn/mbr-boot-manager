@@ -75,8 +75,6 @@ INT 0x10                     ; Change cursor shape (function 0x01)
 ;*                       Print Partition table                      *;
 ;********************************************************************;
 
-; TODO: try to remove BP
-
 MOV CX, ENTRY_NUM            ; Maximum of four entries as loop counter
 MOV BP, 494 + DEST           ; Location of last entry in the table
 XOR BX, BX                   ; BL = active index, BH = page number
@@ -188,13 +186,8 @@ MISSING_OS:
     MOV SI, MISSING_OS_STR - BASE + DEST
     
 PRINT_ERROR:
-    ; TODO: move cursor
     CALL PRINT_STRING
-    MOV AX, 0x8600 
-    MOV CX, 0x004C 
-    MOV DX, 0x4B40 
-    INT 0x15
-    JMP REBOOT
+    JMP HALT
 
 ROM_BASIC:
     INT 0x18                     ; Start ROM-BASIC or display an error
@@ -219,8 +212,14 @@ BOOT:
 
 ; BP = entry, DL = 0x80
 
-MOV BP, 446 + DEST
 
+MOV BP, 446 + DEST
+;MOV BP, 446 + DEST           ; Location of last entry in the table
+;MOV AL, 4
+;SUB AL, CL
+;MOV BL, 16
+;MUL BL
+;ADD BP, AX
 MOV [BP], DL
 PUSH BP                     ; Save Base Pointer on Stack
 MOV BYTE [BP+0x11], 5       ; Number of attempts of reading the disk
