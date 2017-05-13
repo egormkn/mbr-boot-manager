@@ -75,8 +75,6 @@ INT 0x10                     ; Change cursor shape (function 0x01)
 ;*                       Print Partition table                      *;
 ;********************************************************************;
 
-; TODO: try to remove BP
-
 MOV CX, ENTRY_NUM            ; Maximum of four entries as loop counter
 MOV BP, 494 + DEST           ; Location of last entry in the table
 XOR BX, BX                   ; BL = active index, BH = page number
@@ -98,7 +96,7 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
     INT 0x10                 ; Change cursor position (function 0x02)
                              ; Destroyed: AX, SP, BP, SI, DI
                              
-    MOV SI, PARTITION_STR    ; Print partition title
+    MOV SI, PARTITION_STR_ID ; Print partition title
     CALL PRINT_STRING        ; Call printing routine
     MOV AL, 0x30             ; Put ASCII code for 0 to AL
     ADD AL, CL               ; Get partition number ASCII code
@@ -108,7 +106,7 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
                              
     CMP BL, CL               ; Compare current partition with active
     JNE SKIP_ACTIVE_LABEL    ; If current is not active, skip printing
-    MOV SI, ACTIVE_STR       ; Print partition title
+    MOV SI, ACTIVE_STR_ID    ; Print partition title
     CALL PRINT_STRING        ; Call printing routine
     
     SKIP_ACTIVE_LABEL:       ; Go here to skip printing of "active"
@@ -117,21 +115,21 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
     LOOP FOR_PARTITIONS      ; Print another entry unless CX = 0
 
 ;********************************************************************;
-;*                  Skip menu if Shift key pressed                  *;
+;*               Skip menu if Shift key is not pressed              *;
 ;********************************************************************;
 
 MOV AH, 0x02                 ; Get the shift status of the keyboard
 INT 0x16                     ; Get flags of keyboard state to AL
 AND AL, 0x03                 ; AND bitmask for left and right shift
 CMP AL, ZERO                 ; Check for shift keys
-JNE BOOT                     ; Skip menu if shift key pressed
+JE BOOT                      ; Skip menu if shift key is not pressed
 
 ;********************************************************************;
 ;*                         Display boot menu                        *;
 ;********************************************************************;
 
 CMP BL, ZERO                 ; Check if we found an active partition
-JNE MENU_LOOP                ; If there is one, display menu
+JNE MENU_LOOP                ; If there is one, just display menu
 INC BX                       ; If not, set cursor to first entry
 
 MENU_LOOP:                   ; Menu loop
@@ -172,7 +170,7 @@ MOVE_UP:                     ; Move cursor up
 MOVE_DOWN:                   ; Move cursor down
     CMP BL, 0x04             ; Check if cursor is at the last entry
     JAE MOVE_DOWN_RET        ; If it is, do nothing
-    INC BX                   ; Move it up by decrementing index
+    INC BX                   ; Move it down by incrementing index
     MOVE_DOWN_RET:
     JMP MENU_LOOP            ; Return to menu loop
 
@@ -180,19 +178,18 @@ MOVE_DOWN:                   ; Move cursor down
 ;*                    Print Partition subroutine                    *;
 ;********************************************************************;
 
-ERROR_LOADING:
-    MOV SI, ERROR_LOADING_STR - BASE + DEST
+LOAD_ERROR:
+    MOV SI, LOAD_ERROR_STR_ID
     JMP PRINT_ERROR
     
 MISSING_OS:
-    MOV SI, MISSING_OS_STR - BASE + DEST
+    MOV SI, MISSING_OS_STR_ID
     
 PRINT_ERROR:
-    ; TODO: move cursor
     CALL PRINT_STRING
     MOV AX, 0x8600 
-    MOV CX, 0x004C 
-    MOV DX, 0x4B40 
+    MOV CX, 0x002D 
+    XOR DX, DX
     INT 0x15
     JMP REBOOT
 
@@ -213,14 +210,30 @@ HALT:
 ;*              Select the way of working with the disk             *;
 ;********************************************************************;
 
-; TODO: Link this code from Win7 MBR to menu above
+; BX = selected partition (1..4), DX is on stack
 
 BOOT:
+PUSH BX
 
-; BP = entry, DL = 0x80
+MOV AH, 0x02                 ; Set cursor position, BH set to 0x00
+MOV DX, 0x0101               ; DH = row, DL = column
+INT 0x10                     ; Change cursor position (function 0x02)
+                             ; Destroyed: AX, SP, BP, SI, DI
+                             
+MOV AX, 0x0600               ; Scroll window (0x00 lines => clear)
+MOV BH, COLOR                ; Background and text color
+XOR CX, CX                   ; Upper-left point (row: 0, column: 0)
+MOV DX, 0x184F               ; Lower-right point (row: 24, column: 79)
+INT 0x10                     ; Scroll up window (function 0x06)
+                             ; Destroyed: AX, SP, BP, SI, DI
+                             
+                             
+MOV BP, 430 + DEST
+POP BX
+SHL BX, 4
+ADD BP, BX
 
-MOV BP, 446 + DEST
-
+POP DX
 MOV [BP], DL
 PUSH BP                     ; Save Base Pointer on Stack
 MOV BYTE [BP+0x11], 5       ; Number of attempts of reading the disk
@@ -326,7 +339,7 @@ DEC BYTE [BP+0x11]          ; Begins with 05h from 0638.
 JNZ LABEL2                  ; If 0, tried 5 times to read
                             ; VBR Sector from disk drive.
 CMP BYTE [BP+00],0x80  
-JZ ERROR_LOADING            ;  -> "Error loading operating system"
+JZ LOAD_ERROR            ;  -> "Error loading operating system"
 MOV DL, 0x80
 JMP BOOT
 
@@ -335,20 +348,18 @@ PUSH BP
 XOR AH, AH
 MOV DL, [BP+00]
 INT 0x13
-
 POP BP
 JMP TRY_READ
 
 LABEL1:
 CMP WORD [0x7DFE], 0xAA55
-JNZ MISSING_OS           ; If we don't see it, Error!
-                            ; -> "Missing operating system"
+JNZ MISSING_OS           ; If we don't see it, print "Missing operating system"
 
 ;********************************************************************;
 ;*                        Jump to loaded VBR                        *;
 ;********************************************************************;
 
-MOV DX, [BP]                 ; From BIOS; often 80h.
+MOV DX, [BP]                 ; Get disk ID from BIOS; often 0x80
 XOR DH, DH                   ; Only DL part matters
 JMP 0x0000:0x7C00            ; Jump to VBR
 
@@ -376,8 +387,13 @@ PRINT_STRING:                ; Changes: SI, AX; BH set to 0x00
 
 PARTITION_STR: DB "Partition ", 0
 ACTIVE_STR: DB " (A)", 0
-ERROR_LOADING_STR: DB "E2", 0
-MISSING_OS_STR: DB "E3", 0
+LOAD_ERROR_STR: DB "Error :(", 0
+MISSING_OS_STR: DB "No OS", 0
+
+PARTITION_STR_ID: EQU PARTITION_STR - BASE + DEST
+ACTIVE_STR_ID: EQU ACTIVE_STR - BASE + DEST
+LOAD_ERROR_STR_ID: EQU LOAD_ERROR_STR - BASE + DEST
+MISSING_OS_STR_ID: EQU MISSING_OS_STR - BASE + DEST
 
 ;********************************************************************;
 ;*                    Fill other bytes with 0x00                    *;
