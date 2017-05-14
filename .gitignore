@@ -32,6 +32,7 @@
 *.dSYM/
 *.su
 
+# Binary and log files
 *.bin
 *.log
 *.img

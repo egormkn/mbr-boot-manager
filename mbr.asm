@@ -85,8 +85,8 @@ XOR BX, BX                   ; BL = active index, BH = page number
 FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
     PUSH BP                  ; Save BP state
     
-    CMP BYTE [BP], ZERO      ; Check for active state of partition
-    JNL NOT_ACTIVE           ; Partition is not active, skip
+    CMP BYTE [BP], 0x80      ; Check for active state of partition
+    JNE NOT_ACTIVE           ; Partition is not active, skip
     MOV BL, CL               ; Save index of active partition
     
     NOT_ACTIVE:              ; Go here if partition is not active
@@ -96,7 +96,7 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
     INT 0x10                 ; Change cursor position (function 0x02)
                              ; Destroyed: AX, SP, BP, SI, DI
                              
-    MOV SI, PARTITION_STR    ; Print partition title
+    MOV SI, PARTITION_STR_ID ; Print partition title
     CALL PRINT_STRING        ; Call printing routine
     MOV AL, 0x30             ; Put ASCII code for 0 to AL
     ADD AL, CL               ; Get partition number ASCII code
@@ -106,7 +106,7 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
                              
     CMP BL, CL               ; Compare current partition with active
     JNE SKIP_ACTIVE_LABEL    ; If current is not active, skip printing
-    MOV SI, ACTIVE_STR       ; Print partition title
+    MOV SI, ACTIVE_STR_ID    ; Print partition title
     CALL PRINT_STRING        ; Call printing routine
     
     SKIP_ACTIVE_LABEL:       ; Go here to skip printing of "active"
@@ -114,23 +114,26 @@ FOR_PARTITIONS:              ; Loop for each partition entry (4 to 1)
     SUB BP, ENTRY_SIZE       ; Switch to the previous partition entry
     LOOP FOR_PARTITIONS      ; Print another entry unless CX = 0
 
+CMP BYTE BL, ZERO            ; Check if we found an active partition
+JNE RUN_MANAGER              ; If there is one, just display menu
+INC BX                       ; If not, set cursor to first entry
+JMP MENU_LOOP                ; And display menu
+
+RUN_MANAGER:
+
 ;********************************************************************;
-;*                  Skip menu if Shift key pressed                  *;
+;*               Skip menu if Shift key is not pressed              *;
 ;********************************************************************;
 
 MOV AH, 0x02                 ; Get the shift status of the keyboard
 INT 0x16                     ; Get flags of keyboard state to AL
 AND AL, 0x03                 ; AND bitmask for left and right shift
 CMP AL, ZERO                 ; Check for shift keys
-JNE BOOT                     ; Skip menu if shift key pressed
+JE BOOT                      ; Skip menu if shift key is not pressed
 
 ;********************************************************************;
 ;*                         Display boot menu                        *;
 ;********************************************************************;
-
-CMP BL, ZERO                 ; Check if we found an active partition
-JNE MENU_LOOP                ; If there is one, display menu
-INC BX                       ; If not, set cursor to first entry
 
 MENU_LOOP:                   ; Menu loop
     MOV AH, 0x02             ; Set cursor position, BH set to 0x00
@@ -170,7 +173,7 @@ MOVE_UP:                     ; Move cursor up
 MOVE_DOWN:                   ; Move cursor down
     CMP BL, 0x04             ; Check if cursor is at the last entry
     JAE MOVE_DOWN_RET        ; If it is, do nothing
-    INC BX                   ; Move it up by decrementing index
+    INC BX                   ; Move it down by incrementing index
     MOVE_DOWN_RET:
     JMP MENU_LOOP            ; Return to menu loop
 
@@ -178,16 +181,14 @@ MOVE_DOWN:                   ; Move cursor down
 ;*                    Print Partition subroutine                    *;
 ;********************************************************************;
 
-ERROR_LOADING:
-    MOV SI, ERROR_LOADING_STR - BASE + DEST
-    JMP PRINT_ERROR
-    
-MISSING_OS:
-    MOV SI, MISSING_OS_STR - BASE + DEST
-    
 PRINT_ERROR:
-    CALL PRINT_STRING
-    JMP HALT
+    MOV SI, ERROR_STR_ID         ; Put error message id to SI
+    CALL PRINT_STRING            ; Print error message from SI
+    MOV AX, 0x8600               ; Function 0x86 - wait
+    MOV CX, 0x002D               ; Put time in microseconds to CX:DX
+    XOR DX, DX                   ; Use zero here to minify code
+    INT 0x15                     ; Wait 3 seconds
+    JMP REBOOT                   ; Reboot
 
 ROM_BASIC:
     INT 0x18                     ; Start ROM-BASIC or display an error
@@ -206,24 +207,35 @@ HALT:
 ;*              Select the way of working with the disk             *;
 ;********************************************************************;
 
-; TODO: Link this code from Win7 MBR to menu above
+; BX = selected partition (1..4), DX is on stack
 
 BOOT:
+PUSH BX                      ; Save state of BX (selected partition)
 
-; BP = entry, DL = 0x80
+MOV AH, 0x02                 ; Set cursor position, BH set to 0x00
+MOV DX, 0x0101               ; DH = row, DL = column
+INT 0x10                     ; Change cursor position (function 0x02)
+                             ; Destroyed: AX, SP, BP, SI, DI
+                             
+MOV AX, 0x0600               ; Scroll window (0x00 lines => clear)
+MOV BH, COLOR                ; Background and text color
+XOR CX, CX                   ; Upper-left point (row: 0, column: 0)
+MOV DX, 0x184F               ; Lower-right point (row: 24, column: 79)
+INT 0x10                     ; Scroll up window (function 0x06)
+                             ; Destroyed: AX, SP, BP, SI, DI
+                             
+                             
+MOV BP, 430 + DEST           ; Put (446 - ENTRY_NUM) to BP
+POP BX                       ; Restore saved state of BX
+SHL BX, 4                    ; Multiply partition index by 16
+ADD BP, BX                   ; Add offset to BP
 
+POP DX                       ; Restore saved state of DX got from BIOS
+MOV [BP], DL                 ; Put DH = BIOS disk number to [BP]
 
-MOV BP, 446 + DEST
-;MOV BP, 446 + DEST           ; Location of last entry in the table
-;MOV AL, 4
-;SUB AL, CL
-;MOV BL, 16
-;MUL BL
-;ADD BP, AX
-MOV [BP], DL
-PUSH BP                     ; Save Base Pointer on Stack
-MOV BYTE [BP+0x11], 5       ; Number of attempts of reading the disk
-MOV BYTE [BP+0x10], ZERO    ; Used as a flag for the INT13 Extensions
+PUSH BP                      ; Save Base Pointer on Stack
+MOV BYTE [BP+0x11], 5        ; Number of attempts of reading the disk
+MOV BYTE [BP+0x10], ZERO     ; Used as a flag for the INT13 Extensions
 
 MOV AH, 0x41                 ;/ INT13h BIOS Extensions check
 MOV BX, 0x55AA               ;| AH = 0x41, BX = 0x55AA,
@@ -238,54 +250,54 @@ INT 0x13                     ;| DL = BIOS disk number (HDD1 = 0x80)
                              ;| functions (AH=42h-44h,47h,48h) are 
                              ;| supported. Only if no extended support 
                              ;\ is available, will it fail TEST
-POP BP
+POP BP                       ; Restore Base Pointer from stack
+
 JB TRY_READ                  ; CF not cleared, no INT 13 Extensions
 CMP BX, 0xAA55               ; Did contents of BX reverse?
 JNZ TRY_READ                 ; BX not reversed, no INT 13 Extensions
 TEST CX, 0x0001              ; Check functions support
 JZ TRY_READ                  ; Bit 0 not set, no INT 13 Extensions
-INC BYTE [BP+0x10]
+INC BYTE [BP+0x10]           ; Set INT13 Extensions flag
 
 TRY_READ:
-PUSHAD                       ; Save all 32-bit Registers on the
-                                            ; Stack in this order: eax, ecx,
-                                            ; edx, ebx, esp, ebp, esi, edi.
-CMP BYTE [BP+10],00            ;/ CoMPare [BP+10h] to zero;
-JZ INT13_BASIC                 ;\ if 0, can't use Extensions.
+PUSHAD                       ; Save all registers on the stack
+                             ; ax, cx, dx, bx, sp, bp, si, di
+CMP BYTE [BP+10], 00         ; Compare INT13 Extensions flag to zero
+JZ INT13_BASIC               ; If 0, can't use Extensions.
 
 ;********************************************************************;
 ;*                 Read VBR with INT13 Extended Read                *;
 ;********************************************************************;
 
-; The following code uses INT 13, Function 42h ("Extended Read")
+; The following code uses INT 13, Function 0x42 ("Extended Read")
 ; by first pushing the "Disk Address Packet" onto the Stack in 
 ; reverse order of how it will read the data
 ;
-; Offset Size	       Description of DISK ADDRESS PACKET's Contents
-; ------ -----  ------------------------------------------------------
-;   00h  BYTE	Size of packet (10h or 18h; 16 or 24 bytes).
-;   01h  BYTE	Reserved (00).
-;   02h  WORD	Number of blocks to transfer (Only 1 sector for us)
-;   04h  DWORD	Points to -> Transfer Buffer (00007C00 for us).
-;   08h  QWORD	Starting Absolute Sector (get from Partition Table:
-;                (00000000 + DWORD PTR [BP+08]). Remember, the 
+; Offset  Size      Description of DISK ADDRESS PACKET's Contents
+; ------ ------ ------------------------------------------------------
+;  0x00   BYTE   Size of packet (0x10 or 0x18; 16 or 24 bytes)
+;  0x01   BYTE   Reserved (0x00)
+;  0x02   WORD   Number of blocks to transfer (Only 1 sector for us)
+;  0x04  DWORD   Points to -> Transfer Buffer (00007C00 for us)
+;  00x8  QWORD   Starting Absolute Sector (get from Partition Table:
+;                (00000000 + DWORD PTR [BP+0x08]). Remember, the 
 ;                Partition Table Preceding Sectors entry can only be 
 ;                a max. of 32 bits!
 ;   10h  QWORD   (EDD-3.0, optional) 64-bit flat address of transfer 
 ;                buffer; only used if DWORD at 04h is FFFF:FFFF
 
 
-PUSH STRICT DWORD 0x0              ; Push 4 zero-bytes (32-bits) onto
-                            ; Stack to pad VBR's Starting Sector
-PUSH STRICT DWORD [BP+0x08]        ; Location of VBR Sector
-PUSH STRICT WORD 0x0               ; \ Segment then Offset parts, so:
-PUSH STRICT WORD 0x7C00            ; / Copy Sector to 0x7c00 in Memory
-PUSH STRICT WORD 0x0001            ;   Copy only 1 sector
-PUSH STRICT WORD 0x0010            ; Reserved and Packet Size (16 bytes)
-MOV AH, 0x42                ; Function 42h
-MOV DL, [BP]                ; Drive Number
-MOV SI, SP                  ; DS:SI must point to Disk Address Packet
-INT 0x13                    ; Try to get VBR Sector from disk
+PUSH DWORD 0x0               ; Push 4 zero-bytes (32-bits) onto
+                             ; Stack to pad VBR's Starting Sector
+PUSH DWORD [BP+0x08]         ; Location of VBR Sector
+PUSH WORD 0x0                ; Segment then Offset parts, so:
+PUSH WORD 0x7C00             ; copy Sector to 0x7c00 in Memory
+PUSH WORD 0x0001             ; Copy only 1 sector
+PUSH WORD 0x0010             ; Reserved and Packet Size (16 bytes)
+MOV AH, 0x42                 ; Function 42h
+MOV DL, [BP]                 ; Drive Number
+MOV SI, SP                   ; DS:SI must point to Disk Address Packet
+INT 0x13                     ; Try to get VBR Sector from disk
 
 ; If successful, CF is cleared (0) and AH set to 00h.
 ; If any errors, CF is set to 1    and AH = error code. In either case, 
@@ -315,39 +327,35 @@ MOV CH, [BP+03]             ; Bits 6-7 of CL become highest two
 INT 0x13                    ; INT13, Function 02h: READ SECTORS
                             ; into Memory at ES:BX (0000:7C00).
 
-; Whether Extensions are installed or not, both routines end up here:
+;********************************************************************;
+;*                       Read loaded VBR sector                     *;
+;********************************************************************;
 
 READ_SECTOR:
-POPAD                       ; Restore all 32-bit Registers from
-                            ; the Stack, which we saved at 0659.
-JNB LABEL1
-DEC BYTE [BP+0x11]          ; Begins with 05h from 0638.
-JNZ LABEL2                  ; If 0, tried 5 times to read
-                            ; VBR Sector from disk drive.
-CMP BYTE [BP+00],0x80  
-JZ ERROR_LOADING            ;  -> "Error loading operating system"
-MOV DL, 0x80
-JMP BOOT
+POPAD                       ; Restore all 32-bit Registers from stack
+JNB CHECK_OS                ; Sector loaded successfully
+DEC BYTE [BP+0x11]          ; Decrement count of trials (set to 5)
+JZ PRINT_ERROR              ; If 0, we tried five times. Show error
 
-LABEL2:
-PUSH BP
-XOR AH, AH
-MOV DL, [BP+00]
-INT 0x13
+RESET_DISK:
+PUSH BP                     ; Save BP state
+XOR AH, AH                  ; Function 0x00
+MOV DL, [BP+00]             ; Put BIOS disk number to DL
+INT 0x13                    ; Reset disk
+POP BP                      ; Restore BP state
+JMP TRY_READ                ; Try again
 
-POP BP
-JMP TRY_READ
-
-LABEL1:
+CHECK_OS:
 CMP WORD [0x7DFE], 0xAA55
-JNZ MISSING_OS           ; If we don't see it, Error!
-                            ; -> "Missing operating system"
+JNZ PRINT_ERROR             ; Missing bootable mark
+CMP WORD [0x7C00], 0x0000
+JE PRINT_ERROR              ; No bootloader code
 
 ;********************************************************************;
 ;*                        Jump to loaded VBR                        *;
 ;********************************************************************;
 
-MOV DX, [BP]                 ; From BIOS; often 80h.
+MOV DX, [BP]                 ; Get disk ID from BIOS; often 0x80
 XOR DH, DH                   ; Only DL part matters
 JMP 0x0000:0x7C00            ; Jump to VBR
 
@@ -375,8 +383,11 @@ PRINT_STRING:                ; Changes: SI, AX; BH set to 0x00
 
 PARTITION_STR: DB "Partition ", 0
 ACTIVE_STR: DB " (A)", 0
-ERROR_LOADING_STR: DB "E2", 0
-MISSING_OS_STR: DB "E3", 0
+ERROR_STR: DB "Boot sector error", 0x0D, 0x0A, 0
+
+PARTITION_STR_ID: EQU PARTITION_STR - BASE + DEST
+ACTIVE_STR_ID: EQU ACTIVE_STR - BASE + DEST
+ERROR_STR_ID: EQU ERROR_STR - BASE + DEST
 
 ;********************************************************************;
 ;*                    Fill other bytes with 0x00                    *;

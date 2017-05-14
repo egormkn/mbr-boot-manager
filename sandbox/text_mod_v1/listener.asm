@@ -1,6 +1,20 @@
 [BITS 16]
 [ORG 0x7C00]
 
+STI                          ; Enable interrupts
+
+MOV AX, 0x0003               ; Set video mode to 0x03 (80x25, 4-bit)
+INT 0x10                     ; Change video mode (function 0x00)
+
+MOV AX, 0x0501               ; Set active display page to 0x01 (clear)
+INT 0x10                     ; Switch display page (function 0x05)
+
+MOV AX, 0x0600               ; Scroll window (0x00 lines => clear)
+MOV BH, 0x87                 ; Color: red/cyan
+MOV CX, 0x0000               ; Upper-left point (row: 0, column: 0)
+MOV DX, 0x184F               ; Lower-right point (row: 24, column: 79)
+INT 0x10                     ; Scroll up window (function 0x06)
+
 init:
 	jmp main_loop
 	
