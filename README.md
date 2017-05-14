@@ -3,6 +3,8 @@ Simple yet powerful Master Boot Record Boot manager that allows to select one of
 Got tired with reinstalling Grub or other boot manager, that was overwritten by Windows? 
 Now you can choose one of four primary partitions to boot with this tiny (512 bytes only) custom MBR.
 
+![Preview](preview.gif)
+
 ## Features
 * Windows, Linux, FreeDOS and any other bootable partitions are supported
 * Speeds up the boot process for your main OS
