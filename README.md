@@ -24,17 +24,15 @@ Now you can choose one of four primary partitions to boot with this tiny (512 by
 #### Windows  
 Download BootIce and run as Administrator. Select the disk, then Process MBR -> Restore MBR. Choose [mbr.bin](https://github.com/egormkn/bootloader/releases) as restore file, make sure that "Keep signature and partition table untouched" is selected and choose "Restore".
 
-#### Linux/Unix  
-Run `dd if=mbr.bin of=/dev/sdX bs=512 count=1` where X is a letter of the disk
-
-## Bugs/issues  
-- [ ] Strange artifacts on error message when menu was skipped and there is no VBR found
+#### Linux/Unix
+Create a backup of your current MBR with `dd if=/dev/sdX of=mbr_backup.bin bs=512 count=1`.  
+Then run `dd if=mbr.bin of=/dev/sdX bs=446 count=1` where X is a letter of the disk
 
 ## Credits  
 
 * [Egor Makarenko](https://github.com/egormkn)
 * [Andrew Plotnikov](https://github.com/shemplo)
-* [Vladislaw Zemtsov](https://github.com/Zem4ik)
+* [Vladislav Zemtsov](https://github.com/Zem4ik)
 
 ## License
 This is free and unencumbered software released into the public domain. See our [LICENSE](LICENSE) file for more information.
