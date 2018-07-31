@@ -1,7 +1,7 @@
 ;********************************************************************;
 ;*                      x86 Master Boot Record                      *;
 ;*                                                                  *;
-;*                   github.com/egormkn/bootloader                  *;
+;*                github.com/egormkn/MBR-Boot-Manager               *;
 ;********************************************************************;
 
 %define SIZE 512             ; MBR sector size (512 bytes)
